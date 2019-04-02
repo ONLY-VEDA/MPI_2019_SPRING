@@ -7,6 +7,9 @@
 // Program that computes the average of an array of elements in parallel using
 // MPI_Scatter and MPI_Allgather
 //
+#define MIN(a,b) a < b ? a : b  
+#define MAX(a,b) a > b ? a : b  
+
 #include <mpi.h>
 #include <cassert>
 #include <vector>
@@ -80,15 +83,12 @@ void matrix_mul(const int rows=1024, const int cols=1024){
     m1 = gen_matrix<int>(rows, cols);
     m2 = gen_matrix<int>(cols, rows);
     m_origin_out = matrix<int>(prod(*m1, *m2));
-    MPI_Bcast(m2->data().begin(), rows * cols, mpi_type, root, MPI_COMM_WORLD);
-    MPI_Bcast(m_origin_out.data().begin(), rows * cols, mpi_type, root, MPI_COMM_WORLD);
   }else{
     m2 = new matrix<int>(rows, cols);
-    //m_origin_out = new matrix<int>(rows, cols);
     m_origin_out = matrix<int>(rows, cols);
-    MPI_Bcast(m2->data().begin(), rows * cols, mpi_type, root, MPI_COMM_WORLD);
-    MPI_Bcast(m_origin_out.data().begin(), rows * rows, mpi_type, root, MPI_COMM_WORLD);
   }
+  MPI_Bcast(m2->data().begin(), rows * cols, mpi_type, root, MPI_COMM_WORLD);
+  MPI_Bcast(m_origin_out.data().begin(), rows * rows, mpi_type, root, MPI_COMM_WORLD);
   
   if( rows % world_size != 0){
     MPI_Abort(MPI_COMM_WORLD, -1);
@@ -116,10 +116,7 @@ void matrix_mul(const int rows=1024, const int cols=1024){
   auto is_same = check_equality(m_out, &m_origin_out);
   std::cout <<  "Rank:" << world_rank  << ",The two results are same:" << is_same << std::endl; 
   MPI_Barrier(MPI_COMM_WORLD);
-  //if(world_rank == 0){
-  //  std::cout << "Rank " << world_rank << " Out: " << *m_out <<  std::endl
-  //          << m_origin_out << std::endl;
-  //}
+
   delete sub_out;
   delete m_out;
   delete m2;
@@ -128,14 +125,95 @@ void matrix_mul(const int rows=1024, const int cols=1024){
   }
 }
 
-void matrix_pool(const int rows=1024, const int cols=1024){
+template <typename T>
+int get_max(vector<T>* v){
+  T max = v->at(0);
+  for(int i=0; i<v->size(); i++){
+    max = (max < v->at(i)) ? v->at(i) : max;
+  }
+  return max;
+}
+
+// (W−F+2P)/S+1
+// here just implement max pooling
+void matrix_pool(const int rows=1024, const int cols=1024, const int k_h = 4, const int k_w = 4,
+		const int p_h = 0, const int p_w = 0, const int stride_h = 4, const int stride_w = 4){
+ 
+  int world_rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+  int world_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+  auto mpi_type = MPI_INT;
+  const int root = 0;
+
+  matrix<int>* M = NULL;
+  //matrix<int>* K = NULL;
+  if( world_rank == root){
+    M = gen_matrix<int>(rows, cols);
+    //K = gen_matrix<int>(k_h, k_w);
+  }else{
+    M = new matrix<int>(rows, cols);
+    //K = new matrix<int>(k_h, k_w);
+  }
+  MPI_Bcast(M->data().begin(), rows*cols, mpi_type, root, MPI_COMM_WORLD);
+  //MPI_Bcast(K->data().begin(), k_h * k_w, mpi_type, root, MPI_COMM_WORLD);
+
+  if( rows % k_h != 0 || cols % k_w != 0){
+    MPI_Abort(MPI_COMM_WORLD, -1);
+  }
+
+  const int new_rows = (rows - k_h + 2 * p_h) / stride_h + 1;
+  const int new_cols = (cols - k_w + 2 * p_w) / stride_w + 1;
+  
+  matrix<int>* N = new matrix<int>(new_rows, new_cols);
+  //std::cout << N->size1() << std::endl;
+  int num_elements_per_proc = new_rows * new_cols / world_size;
+  std::vector<int>* sub_vec = new std::vector<int>(num_elements_per_proc);
+  MPI_Scatter(N->data().begin(), num_elements_per_proc, mpi_type, sub_vec, num_elements_per_proc, mpi_type, root, MPI_COMM_WORLD);
+  std::cout << *N << std::endl;
+  
+  for(int i=0; i < num_elements_per_proc; i++){
+    const int pool_index = i*num_elements_per_proc + world_rank;
+
+    int nr = pool_index / new_cols;
+    int nc = pool_index % new_cols;
+    //std::cout << "rank:" << world_rank << "pindex:" << pool_index << "nr:"<< nr << "nc:" << nc << std::endl;
+    
+    int hstart = nr * stride_h - p_h;
+    int wstart = nc * stride_w - p_w;
+    int hend = MIN(hstart + k_h, rows);
+    int wend = MIN(wstart + k_w, cols);
+    hstart = MAX(hstart, 0);
+    wstart = MAX(wstart, 0); 
+
+    for(int h=hstart; h < hend; h++){
+      for(int w=wstart; w < wend; w++){
+        const int index = h * cols + w;
+        //std::cout << "rank:" << world_rank << "pindex:" << pool_index << "nr:"<< nr << "nc:" << nc  << "index: " << index << std::endl;
+        //const int bottom_data = M->data().begin()[index];
+	
+        const int bottom_data = M->at_element(h, w);
+	std::cout << h << " " << w<< " " << bottom_data << std::endl;
+	if(bottom_data > sub_vec->at(i) ){
+	  sub_vec->at(i) = bottom_data;
+	}
+      }
+    }
+  }
+
+  //MPI_Allgather(sub_vec->data(), num_elements_per_proc, mpi_type, N->data().begin(), num_elements_per_proc,mpi_type, MPI_COMM_WORLD);
+  std::cout<< *M << std::endl;
+  //std::cout<< *N << std::endl;
+
 }
 
 int main(int argc, char** argv) {
 
   MPI_Init(NULL, NULL);
 
-  matrix_mul(16, 16);
+  //matrix_mul(16, 16);
+  matrix_pool(8, 8);
 
   MPI_Finalize();
 }
