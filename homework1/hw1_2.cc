@@ -69,17 +69,17 @@ void matrix_mul(const int rows=1024, const int cols=1024){
 
   matrix<int>* m1 = NULL;
   matrix<int>* m2 = NULL; 
-  matrix<int> m_origin_out; 
+  // matrix<int> m_origin_out; 
   if (world_rank == root) {
     m1 = gen_matrix<int>(rows, cols);
     m2 = gen_matrix<int>(cols, rows);
-    m_origin_out = matrix<int>(prod(*m1, *m2));
+    // m_origin_out = matrix<int>(prod(*m1, *m2));
   }else{
     m2 = new matrix<int>(rows, cols);
-    m_origin_out = matrix<int>(rows, cols);
+    // m_origin_out = matrix<int>(rows, cols);
   }
   MPI_Bcast(m2->data().begin(), rows * cols, mpi_type, root, MPI_COMM_WORLD);
-  MPI_Bcast(m_origin_out.data().begin(), rows * rows, mpi_type, root, MPI_COMM_WORLD);
+  // MPI_Bcast(m_origin_out.data().begin(), rows * rows, mpi_type, root, MPI_COMM_WORLD);
   
   if( rows % world_size != 0){
     MPI_Abort(MPI_COMM_WORLD, -1);
@@ -104,8 +104,9 @@ void matrix_mul(const int rows=1024, const int cols=1024){
 
   MPI_Allgather(sub_out->data(), recv_count, mpi_type, m_out->data().begin(), recv_count, mpi_type, MPI_COMM_WORLD); 
 
-  auto is_same = check_equality(m_out, &m_origin_out);
-  std::cout <<  "Rank:" << world_rank  << ",The two results are same:" << is_same << std::endl; 
+  std::cout << *m_out << std::endl;
+  // auto is_same = check_equality(m_out, &m_origin_out);
+  // std::cout <<  "Rank:" << world_rank  << ",The two results are same:" << is_same << std::endl; 
   // MPI_Barrier(MPI_COMM_WORLD);
 
   delete sub_out;
