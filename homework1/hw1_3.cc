@@ -61,30 +61,41 @@ void word_count_small(){
         if(path_size % world_size){
             MPI_Abort(MPI_COMM_WORLD, 2);
         }
+        // std::cout << sizeof(paths->at(0).length())  << std::endl;
     }
     MPI_Bcast(&path_size, 1, MPI_INT, root, MPI_COMM_WORLD);
     MPI_Bcast(&num_elements_per_proc, 1, MPI_INT, root, MPI_COMM_WORLD);
-    
+    if(world_rank != root)
+        paths = new std::vector<std::string>(path_size);
+    // std::cout << world_rank << path_size*sizeof(std::string) << std::endl;
+    MPI_Bcast(paths->data(), path_size*sizeof(std::string), MPI_BYTE, root, MPI_COMM_WORLD);
+    std::cout << world_rank << " after " << *(paths->data()) << std::endl;
+
     std::vector<std::string>* sub_paths = new std::vector<std::string>(num_elements_per_proc);
     int scatter_data_length = num_elements_per_proc * sizeof(std::string);
 
     // std::cout << "rank: " << world_rank << ",path:" << sub_paths->size() << std::endl;
 
-    MPI_Scatter(paths->data(), scatter_data_length, MPI_BYTE, sub_paths->data(), scatter_data_length, MPI_BYTE, root, MPI_COMM_WORLD);
-    
-    for(auto it = sub_paths->begin(); it!=sub_paths->end(); it++){
-        std::cout << *it << std::endl;
-    }
-    std::cout << num_elements_per_proc << " " << sizeof(fs::path) << " " << scatter_data_length 
-        << " " << sub_paths->size() <<  std::endl;
+    MPI_Scatter(paths->data(), scatter_data_length , MPI_BYTE, sub_paths->data(), scatter_data_length, MPI_BYTE, root, MPI_COMM_WORLD);
+    // for(auto it = paths->data(); it != (paths->data())+paths->size(); it++){
+    //     std::cout << *it << std::endl;
+    // }
+    // std::cout << world_rank << " after " << *(paths->data()+25) << std::endl;
+    // for(auto it = sub_paths->begin(); it!=sub_paths->end(); it++){
+    //     std::cout << *it << std::endl;
+    // }
+    // std::cout << num_elements_per_proc << " " << sizeof(fs::path) << " " << scatter_data_length 
+    //     << " " << sub_paths->size() <<  std::endl;
 
-    std::vector<std::string>* res_paths = new std::vector<std::string>(path_size);
-    MPI_Allgather(sub_paths->data(), scatter_data_length, MPI_BYTE, res_paths->data(), scatter_data_length,MPI_BYTE, MPI_COMM_WORLD);
+    // std::vector<std::string>* res_paths = new std::vector<std::string>(path_size);
+    // MPI_Allgather(sub_paths->data(), scatter_data_length, MPI_BYTE, res_paths->data(), scatter_data_length,MPI_BYTE, MPI_COMM_WORLD);
     
     // for(auto it = res_paths->begin(); it!=res_paths->end(); it++){
         // std::cout << *it << std::endl;
     // }
     // std::cout << "rank: " << world_rank << ",path:" << sub_paths->size() << ",out:" << res_paths->size() << std::endl;
+    delete paths;
+    delete sub_paths;
 }
 
 int main(int argc, char** argv){
