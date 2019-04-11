@@ -16,17 +16,31 @@ else()
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS program_options system filesystem REQUIRED)
+find_package(OpenMP REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -DBOOST_UBLAS_NDEBUG")
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
 add_executable(hw1_1 hw1_1.c)
 add_executable(hw1_2 hw1_2.cc)
 add_executable(hw1_3 hw1_3.cc)
+add_executable(hw2_1 hw2_1.cc)
+add_executable(monte_carlo monte_carlo.cc)
 
 target_link_libraries(hw1_3 
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
 )
 
+target_link_libraries(monte_carlo
+  ${Boost_LIBRARY}
+)
+
+target_compile_options(hw2_1 PRIVATE
+  ${OpenMP_CXX_FLAGS}
+)  
+
+target_link_libraries(hw2_1 PRIVATE
+  ${OpenMP_CXX_FLAGS}
+)
 
