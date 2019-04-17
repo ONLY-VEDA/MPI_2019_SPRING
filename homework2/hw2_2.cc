@@ -8,6 +8,7 @@
 #include <boost/random.hpp>
 #include <boost/program_options.hpp>
 #include <boost/math/constants/constants.hpp>
+#include <boost/random/random_device.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 
 #define N 10000000
@@ -20,7 +21,7 @@ int* seq_nums = new int[N];
 int* par_nums = new int[N];
 
 int random_gen(){
-	std::random_device seeder;
+	boost::random::random_device seeder;
 	boost::random::mt19937 gen(seeder());
 	boost::random::uniform_int_distribution<> dist(1,10000);
 	

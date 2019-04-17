@@ -1,7 +1,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <boost/random.hpp>
-#include <boost/program_options.hpp>
+#include <boost/random/random_device.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 
@@ -9,11 +9,10 @@
 
 using namespace boost::random;
 using namespace boost::multiprecision;
-using namespace boost::program_options;
 
 
 cpp_bin_float_50 random_gen(){
-	std::random_device seeder;
+	boost::random::random_device seeder;
 	boost::random::mt19937 gen(seeder());
 
 	cpp_bin_float_50 rand_num = generate_canonical<cpp_bin_float_50, std::numeric_limits<cpp_bin_float_50>::digits>(gen);

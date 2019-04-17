@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-project(homework1)
+project(homework2)
 
-set(CMAKE_C_COMPILER "mpicc")
-set(CMAKE_CXX_COMPILER "mpicxx")
+set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(IS_DEBUG TRUE)
 
@@ -30,13 +30,34 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${OpenMP_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${SYSTEM_INCLUDE_DIRS})
 
-add_executable(hw1_1 hw1_1.c)
-add_executable(hw1_2 hw1_2.cc)
-add_executable(hw1_3 hw1_3.cc)
+add_executable(hw2_1 hw2_1.cc)
+add_executable(hw2_2 hw2_2.cc)
+add_executable(hw2_3 hw2_3.cc)
 
-target_link_libraries(hw1_3 
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
+target_compile_options(hw2_1 PRIVATE
+  ${OpenMP_CXX_FLAGS}
+)  
+
+target_link_libraries(hw2_1 PRIVATE
+  ${Boost_LIBRARIES}
+  ${OpenMP_CXX_FLAGS}
 )
 
+target_compile_options(hw2_2 PRIVATE
+  ${OpenMP_CXX_FLAGS}
+)  
+
+target_link_libraries(hw2_2 PRIVATE
+  ${Boost_LIBRARIES}
+  ${OpenMP_CXX_FLAGS}
+)
+
+target_compile_options(hw2_3 PRIVATE
+  ${OpenMP_CXX_FLAGS}
+)  
+
+target_link_libraries(hw2_3 PRIVATE
+  ${Boost_LIBRARIES}
+  ${OpenMP_CXX_FLAGS}
+)
 

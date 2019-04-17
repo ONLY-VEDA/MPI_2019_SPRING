@@ -9,6 +9,7 @@
 #include <cstring>
 #include <sys/time.h>
 #include <boost/random.hpp>
+#include <boost/random/random_device.hpp>
 
 #define N_NODES 1024000
 
@@ -120,7 +121,7 @@ class PageRank{
 };
 
 int random_gen(int low_lim, int high_lim){
-	std::random_device seeder;
+	boost::random::random_device seeder;
 	boost::random::mt19937 gen(seeder());
 	boost::random::uniform_int_distribution<> dist(low_lim,high_lim);
 	
