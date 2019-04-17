@@ -35,4 +35,5 @@ build
 report
 
 .vscode
+compile_commands.json
 
