@@ -107,8 +107,10 @@ void par_qsort_wrap(){
 	int n = N;
 	#pragma omp parallel default(none) shared(par_nums, n)
 	{
-	#pragma omp single nowait
-	{par_qsort(par_nums, 0, n-1);}
+		#pragma omp single nowait
+		{
+			par_qsort(par_nums, 0, n-1);
+		}
 	}
 
 }

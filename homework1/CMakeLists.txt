@@ -24,6 +24,7 @@ else()
 endif()
 
 set(SYSTEM_INCLUDE_DIRS "/usr/lib/gcc/x86_64-linux-gnu/5.4.0/include")
+
 find_package(Boost COMPONENTS program_options system filesystem REQUIRED)
 find_package(OpenMP REQUIRED)
 

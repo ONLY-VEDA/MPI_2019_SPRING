@@ -9,13 +9,11 @@
 #include <cstring>
 #include <sys/time.h>
 #include <boost/random.hpp>
-#include <boost/multiprecision/cpp_dec_float.hpp>
 
-#define N_NODES 102400
+#define N_NODES 1024000
 
 using namespace std;
 using namespace boost::random;
-using namespace boost::multiprecision;
 
 int random_gen(int low_lim, int high_lim);
 
@@ -54,38 +52,51 @@ class Graph{
 
 class PageRank{
 	public:
-	vector<cpp_dec_float_50>* PR;
+	vector<float>* PR;
 	Graph* g;
 	PageRank(Graph *g){
-		this->PR = new vector<cpp_dec_float_50>(N_NODES, 1);
+		this->PR = new vector<float>(N_NODES, 1);
 		this->g = new Graph(*g);
 	};
 	void Update(int num_iter){
+		vector<float>* PR_new = new vector<float>(N_NODES, 0.0);
 		while(num_iter--){
-		vector<cpp_dec_float_50>* PR_new = new vector<cpp_dec_float_50>(N_NODES, 0.0);
-		for(int i = 0; i < this->g->adjList->size(); i++){
-			int adjLen = this->g->adjList->at(i).size();
-			for(int j = 0; j < adjLen; j++){
-				int dest = this->g->adjList->at(i).at(j);
-				PR_new->at(dest) += this->PR->at(i) /  adjLen;
+			PR_new->resize(N_NODES, 0.0);
+			for(int i = 0; i < this->g->adjList->size(); i++){
+				int adjLen = this->g->adjList->at(i).size();
+				for(int j = 0; j < adjLen; j++){
+					int dest = this->g->adjList->at(i).at(j);
+					PR_new->at(dest) += this->PR->at(i) / adjLen;
+				}
 			}
-		}
-		this->PR = PR_new;
+			this->PR = PR_new;
 		}
 	};
 	void UpdatePar(int num_iter){
-		while(num_iter--){
-		vector<cpp_dec_float_50>* PR_new = new vector<cpp_dec_float_50>(N_NODES, 0.0);
-		int i,j;
-		#pragma omp parallel for shared(PR_new) private(i,j)
-		for(i = 0; i < this->g->adjList->size(); i++){
-			int adjLen = this->g->adjList->at(i).size();
-			for(j = 0; j < adjLen; j++){
-				int dest = this->g->adjList->at(i).at(j);
-				PR_new->at(dest) += this->PR->at(i) / adjLen;
-			}
+		vector<float>* PR_new = new vector<float>(N_NODES, 0.0);
+		omp_lock_t lock[N_NODES];
+		for (int i=0; i<N_NODES; i++){
+			omp_init_lock(&(lock[i]));
 		}
-		this->PR = PR_new;
+		while(num_iter--){
+			PR_new->resize(N_NODES, 0.0);
+			int i,j;
+			#pragma omp parallel for shared(PR_new) private(i,j)
+			for(i = 0; i < this->g->adjList->size(); i++){
+				int adjLen = this->g->adjList->at(i).size();
+				for(j = 0; j < adjLen; j++){
+					int dest = this->g->adjList->at(i).at(j);
+					//#pragma omp critical
+					omp_set_lock(&(lock[dest]));
+					PR_new->at(dest) += this->PR->at(i) / adjLen;
+
+					omp_unset_lock(&(lock[dest]));
+				}
+			}
+			this->PR = PR_new;
+		}
+		for (int i=0; i<N_NODES; i++){
+			omp_destroy_lock(&(lock[i]));
 		}
 	};
 	void Print(){
@@ -99,7 +110,7 @@ class PageRank{
 			return false;
 		}
 		for(int i=0; i < this->PR->size(); i++){
-			//std::cout <<"i: "<< i << this->PR->at(i) << " " << rt.PR->at(i) << std::endl;
+			//std::cout <<"i: "<< i << " " << this->PR->at(i) << " " << rt.PR->at(i) << std::endl;
 			if( fabs(this->PR->at(i) - rt.PR->at(i)) > 0.001 ){
 				return false;
 			}
@@ -180,7 +191,7 @@ int main(int argc, char *argv[]){
 	init();
 	PageRank* pr = new PageRank(g);
 	PageRank* pr_par = new PageRank(g);
-	bool is_same = (*pr) == (*pr_par);
+	bool is_same;
 	int num_iter = 100;
 
 	auto up_seq = std::bind(&PageRank::Update, pr, num_iter);
